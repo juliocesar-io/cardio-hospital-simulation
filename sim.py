@@ -3,6 +3,12 @@ import random
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import os
+
+cdw = os.getcwd()
+viridis = ['#7eb54e', '#29788E', '#22A784', '#79D151', '#FDE724']
+salas = ['Sala 1', 'Sala 2', 'Sala MP', 'Sala H']
+print(cdw)
 
 operation_room_capacity = 1 # 1 patient per room at a time
 
@@ -12,61 +18,87 @@ class Hospital:
         
         # PARAMETERS
         self.patient_arrivals_rate = 1 / 30 # 1 patient every x min 
-        self.patient_aditional_percentage = 0.5 # 50% of patients are aditional
+        self.patient_aditional_percentage = 0.49 # 49% of patients are aditional
         self.working_hours = 15 * 60 # 12h work day in minutes
        
         self.specialties_percentage_distribution = [
-            ("radiology", 0.3), 
-            ("hemodynamic", 0.5), 
-            ("electrophysiology", 0.2) 
+            ("RX", 0.134), 
+            ("H", 0.530), 
+            ("EF", 0.173),
+            ("EFP", 0.025), 
+            ("N", 0.038), 
+            ("HP", 0.096),
+            ("VP", 0.004) 
         ]
         
         self.rooms = {
             "Sala_1": 
                 {"specialties": 
                 {
-                    "radiology", 
-                    "hemodynamic"
+                    "H", 
+                    "HP",
+                    "EF",
+                    "RX"
                 }, 
                 "resource": simpy.Resource(env, num_rooms)},
             
             "Sala_2": 
                 {"specialties": 
                 {
-                    "hemodynamic", 
-                    "electrophysiology"
+                    "HP", 
+                    "EF",
+                    "N",
+                    "RX",
+                    "VP"
                 }, 
                 "resource": simpy.Resource(env, num_rooms)},
             
-            "Sala_3": 
+            "Sala_MP": 
                 {"specialties": 
                 {
-                    "radiology", 
-                    "electrophysiology"
+                    "N", 
+                    "RX"
                 }, 
                 "resource": simpy.Resource(env, num_rooms)},
             
-            "Sala_4": 
+            "Sala_H": 
                 {"specialties": 
                 {
-                    "radiology", 
-                    "hemodynamic"
+                    "EF", 
+                    "EFP"
                 }, 
                 "resource": simpy.Resource(env, num_rooms)},
         }
         self.operation_times_means_stddevs = {
-            "radiology": {
-                "aditional": (81, 43), # mean, stddev in minutes
-                "scheduled": (71, 43)
+            "EF": {
+                "aditional": (152, 85), # mean, stddev in minutes
+                "scheduled": (172, 92)
             },
-            "hemodynamic": {
+            "EFP": {
+                "aditional": (163, 53),
+                "scheduled": (146, 62)
+            },
+            "H": {
                 "aditional": (35, 22),
                 "scheduled": (41, 38)
             },
-            "electrophysiology": {
-                "aditional": (152, 85),
-                "scheduled": (172, 92)
+            "HP": {
+                "aditional": (117, 51),
+                "scheduled": (96, 47)
+            },
+            "N": {
+                "aditional": (94, 48),
+                "scheduled": (73, 57)
+            },
+            "RX": {
+                "aditional": (81, 43),
+                "scheduled": (71, 43)
+            },
+            "VP": {
+                "aditional": (0, 0),
+                "scheduled": (71, 47)
             }
+            
         }
         self.patients_per_room = {room: 0 for room in self.rooms}
         self.patients_type_per_room = {room: {"aditional": 0, "scheduled": 0} for room in self.rooms}
@@ -77,9 +109,13 @@ class Hospital:
             "scheduled": 0
         }
         self.patients_by_specialty = {
-            "radiology": 0,
-            "hemodynamic": 0,
-            "electrophysiology": 0
+            "H": 0,
+            "HP": 0,
+            "EF": 0,
+            "EFP": 0,
+            "N": 0,
+            "RX": 0,
+            "VP": 0
         }
         self.queue_length_over_time = {room: [] for room in self.rooms}
         self.wait_times = []
@@ -154,59 +190,62 @@ class Hospital:
 
         df_specialty = pd.DataFrame.from_dict(self.patients_by_specialty, orient='index', columns=['Patients'])
         df_specialty.plot(kind='bar', title='Patients by Specialty', figsize=(10,9))
-        plt.savefig('output/patients_by_specialty.png')
+        #plt.savefig(os.path.join(cdw,'patients_by_specialty.png'))
 
         room_usage_percentage = {room: usage / self.env.now * 100 for room, usage in self.room_usage.items()}
         df_rooms = pd.DataFrame.from_dict(room_usage_percentage, orient='index', columns=['Usage'])
-        df_rooms.plot(kind='bar', title='Room Usage Percentage')
-        plt.savefig('output/room_usage_percentage.png')
+        df_rooms.plot(kind='bar', title='Ocupación de la sala', color = viridis)
+        #plt.savefig(os.path.join(cdw,'room_usage_percentage.png'))
         
         plt.figure()  # Create a new figure
-        plt.plot(self.avg_wait_times)
-        plt.title('Average Wait Times')
-        plt.xlabel('Patients')
-        plt.ylabel('Average Wait Time')
-        plt.savefig('output/average_wait_times.png')
+        plt.plot(self.avg_wait_times, color = "limegreen")
+        plt.title('Tiempo de espera promedio')
+        plt.xlabel('Pacientes')
+        plt.ylabel('Tiempo promedio de espera')
+        plt.savefig(os.path.join(cdw,'average_wait_times.png'))
         
         plt.figure()  # Create a new figure
-        plt.hist(self.wait_times, bins=20)  # Plot histogram with 20 bins
-        plt.title('Histogram of Wait Times')
-        plt.xlabel('Wait Time')
-        plt.ylabel('Number of Patients')
-        plt.savefig('output/histogram_wait_times.png')
+        plt.hist(self.wait_times, bins=20, color = "limegreen")  # Plot histogram with 20 bins
+        plt.title('Histograma de tiempos de espera')
+        plt.xlabel('Tiempo de espera')
+        plt.ylabel('Número de pacientes')
+        plt.savefig(os.path.join(cdw,'histogram_wait_times.png'))
         
-        plt.figure()  # Create a new figure
+        ax, plt = plt.subplots()  # Create a new figure
             
         for room in self.rooms:
             plt.plot(self.queue_length_over_time[room], label=room)
-        plt.title('Queue Length Over Time')
-        plt.xlabel('Time')
-        plt.ylabel('Queue Length')
-        plt.legend()
-        plt.savefig('output/queue_length_all_rooms.png')
+        plt.title('Longitud de la cola en el tiempo')
+        plt.xlabel('Tiempo')
+        plt.ylabel('Largo de la cola')
+        #plt.legend()
+        plt.savefig(os.path.join(cdw,'queue_length_all_rooms.png'))
         
         # Plotting number of patients by patient type
         patient_types = list(self.patients_by_patient_type.keys())
         patient_counts = list(self.patients_by_patient_type.values())
 
-        plt.figure()
-        plt.bar(patient_types, patient_counts)
-        plt.title('Number of Patients by Patient Type')
-        plt.xlabel('Patient Type')
-        plt.ylabel('Count')
-        plt.savefig('output/patients_by_patient_type.png')
+        fig, ax = plt.subplots()
+        ax.bar(patient_types, patient_counts, color = viridis)
+        ax.set_title('Número de pacientes por agendamiento')
+        ax.set_xlabel('Tipo de agendamiento')
+        ax.set_ylabel('Pacientes')
+        ax.set_xticklabels(['Agendado', 'Programado'])
+        plt.savefig(os.path.join(cdw,'patients_by_patient_type.png'))
         
         
         # Plot number of patients per room
         room_names = list(self.patients_per_room.keys())
         patient_counts = list(self.patients_per_room.values())
 
-        plt.figure()
-        plt.bar(room_names, patient_counts)
-        plt.title('Number of Patients per Room')
-        plt.xlabel('Room')
-        plt.ylabel('Number of Patients')
-        plt.savefig('output/number_of_patients_per_room.png')
+     
+        plt, ax = plt.subplots()
+        plt.bar(room_names, patient_counts, color = viridis)#palette = "viridis created"
+        plt.title('Número de pacientes por sala')
+        plt.xlabel('Sala')
+        plt.ylabel('Número de pacientes')
+        plt.savefig(os.path.join(cdw,'number_of_patients_per_room.png'))
+        ax.set_xticklabel(salas)
         
         
         # Plot number of patients per room and patient type
@@ -223,15 +262,16 @@ class Hospital:
         fig, ax = plt.subplots()
         for i, patient_type in enumerate(patient_types):
             patient_counts = [self.patients_type_per_room[room][patient_type] for room in room_names]
-            ax.bar(room_indices + room_offsets[i], patient_counts, bar_width, label=patient_type)
+            ax.bar(room_indices + room_offsets[i], patient_counts, bar_width, label=patient_type, color= viridis)
         
         ax.set_xticks(room_indices)
-        ax.set_xticklabels(room_names)
-        ax.set_title('Number of Patients per Room and Patient Type')
-        ax.set_xlabel('Room')
-        ax.set_ylabel('Number of Patients')
-        ax.legend(title='Patient Type', loc='upper right')
-        plt.savefig('output/number_of_patients_per_room_and_patient_type.png')
+        ax.set_xticklabels(salas)
+        ax.set_title('Numero de pacientes por sala según su agendamiento')
+        ax.set_xlabel('Sala')
+        ax.set_ylabel('Número de pacientes')
+        ax.legend(title='Agendamiento', loc='upper right')
+        #ax.legend([], ['label1', 'label2', 'label3'])
+        plt.savefig(os.path.join(cdw,'number_of_patients_per_room_and_patient_type.png'))
         
         # Calculate average waiting time per specialty
         avg_waiting_times = {
@@ -243,12 +283,21 @@ class Hospital:
         specialty_names = list(avg_waiting_times.keys())
         avg_waiting_time = list(avg_waiting_times.values())
 
-        plt.figure()
-        plt.bar(specialty_names, avg_waiting_time)
-        plt.title('Average Waiting Time per Specialty')
-        plt.xlabel('Specialty')
-        plt.ylabel('Average Waiting Time')
-        plt.savefig('output/average_waiting_time_per_specialty.png')
+        fig, ax = plt.subplots()
+        plt.bar(specialty_names, avg_waiting_time, color = viridis)
+        plt.title('Tiempo de espera promedio por especialidad')
+        plt.xlabel('Especialidad')
+        plt.ylabel('Tiempo pormedio de espera')
+        # ax.set_xticklabels(['Electrofisiología',
+        #                     'Electrofisiología pediátrica',
+        #                     'Hemodinamia',
+        #                     'Hemodinamia pediátrica',
+        #                     'Neurointervencionismo',
+        #                     'Radiología Intervencionista',
+        #                     'Vascular periférico'])
+        plt.savefig(os.path.join(cdw, 'average_waiting_time_per_specialty.png'))
+        plt.xticks(rotation=45)
+        #plt.rcParams['xtick.labelsize'] = small
         
         # Calculate average wait time per patient type
         avg_wait_times = {
@@ -261,11 +310,11 @@ class Hospital:
         avg_wait_time = list(avg_wait_times.values())
 
         plt.figure()
-        plt.bar(patient_type_names, avg_wait_time)
-        plt.title('Average Wait Time per Patient Type')
-        plt.xlabel('Patient Type')
-        plt.ylabel('Average Wait Time')
-        plt.savefig('output/average_wait_time_per_patient_type.png')
+        plt.bar(patient_type_names, avg_wait_time, color = viridis)
+        plt.title('Tiempo promedio de espera por agendamiento')
+        plt.xlabel('Tipo de agendamiento')
+        plt.ylabel('Tiempo de espera promedio')
+        plt.savefig(os.path.join(cdw, 'average_wait_time_per_patient_type.png'))
 
 
 def get_log_normal(mu, sigma):
